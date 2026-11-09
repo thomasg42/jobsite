@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#05070d" />
+  <title>Jobsite · Forever Gold</title>
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="mark" aria-hidden="true"></span>
+      <div>
+        <p class="kicker">Forever Gold · Jobsite</p>
+        <h1>One job. One folder. Everyone sees it.</h1>
+        <p id="companyLine" class="sub">Sample for Scott. Company name not set.</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="roles" role="group" aria-label="Who is looking">
+        <button type="button" id="roleOwner" aria-pressed="true">You</button>
+        <button type="button" id="roleBook" aria-pressed="false">Bookkeeper</button>
+      </div>
+      <button type="button" id="reset" class="quiet">Reset sample</button>
+    </div>
+  </header>
+  <main>
+    <canvas id="sky" aria-hidden="true"></canvas>
+    <ul class="pillars" aria-label="What this fixes">
+      <li><b>01</b> Organized</li>
+      <li><b>02</b> Stored in one place</li>
+      <li><b>03</b> Backed up</li>
+      <li><b>04</b> Bookkeeper in the loop</li>
+    </ul>
+    <p id="caption"></p>
+    <p class="hint">Drag to look around · tap anything floating</p>
+    <section id="dock" aria-live="polite"></section>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
