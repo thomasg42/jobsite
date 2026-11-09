@@ -1,7 +1,7 @@
 /**
  * Jobsite 3D scene for the Scott sample.
  *
- *   createJobsite(canvas, { steps, onSelect, onFrame, onUserCamera, insets })
+ *   createJobsite(canvas, { steps, onSelect, onDoubleTap, onFrame, onUserCamera, insets })
  *     -> { setView, focus, overview, zoom, pulse, replay, resize, advance, destroy }
  *
  * app.js owns the data. This file draws it: the house under construction is
@@ -34,7 +34,7 @@ import {
   makeMaterials,
   makeTextures,
   roundRect,
-} from "./world3d.js?v=20261109b";
+} from "./world3d.js?v=20261109c";
 
 const GOLD = 0xe8b64c;
 const ALERT = 0xff5a4e;
@@ -423,7 +423,8 @@ function drawChevron(c) {
 // ---------------------------------------------------------------------------
 // The scene
 // ---------------------------------------------------------------------------
-export function createJobsite(canvas, { steps, onSelect, onFrame, onUserCamera, insets }) {
+export function createJobsite(canvas, { steps, onSelect, onDoubleTap, onFrame, onUserCamera, insets }) {
+  let lastTap = null;
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const coarse = window.matchMedia("(pointer: coarse)").matches;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
@@ -1029,7 +1030,11 @@ export function createJobsite(canvas, { steps, onSelect, onFrame, onUserCamera, 
 
   canvas.addEventListener("contextmenu", (e) => e.preventDefault());
   canvas.addEventListener("pointerdown", (e) => {
-    canvas.setPointerCapture(e.pointerId);
+    try {
+      canvas.setPointerCapture(e.pointerId);
+    } catch {
+      /* capture can fail on some browsers; taps still work */
+    }
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.size === 1) {
       drag = { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, at: performance.now(), pan: e.button === 2 || e.shiftKey, moved: 0 };
@@ -1085,8 +1090,17 @@ export function createJobsite(canvas, { steps, onSelect, onFrame, onUserCamera, 
     pointers.delete(e.pointerId);
     if (pointers.size < 2) pinch = null;
     if (wasTap) {
-      const id = pick(e.clientX, e.clientY);
-      if (id && onSelect) onSelect(id);
+      const now = performance.now();
+      const second = lastTap && now - lastTap.at < 380 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 40;
+      if (second) {
+        // double-tap anywhere on the scene closes what is open and goes back to viewing
+        lastTap = null;
+        if (onDoubleTap) onDoubleTap();
+      } else {
+        lastTap = { at: now, x: e.clientX, y: e.clientY };
+        const id = pick(e.clientX, e.clientY);
+        if (id && onSelect) onSelect(id);
+      }
     }
     if (pointers.size === 0) {
       drag = null;

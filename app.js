@@ -1,4 +1,4 @@
-import { createJobsite } from "./scene3d.js?v=20261109b";
+import { createJobsite } from "./scene3d.js?v=20261109c";
 import {
   FOLDERS,
   WORKFLOW,
@@ -14,7 +14,7 @@ import {
   setCompanyName,
   setRole,
   stationStatus,
-} from "./model.js?v=20261109b";
+} from "./model.js?v=20261109c";
 
 const STORAGE_KEY = "fg-scott-job-galaxy-v1";
 const STEP_MS = 7000;
@@ -32,7 +32,7 @@ const tourBar = $("#tourBar");
 const phone = window.matchMedia("(max-width: 979px)");
 
 let state = load();
-let selected = "job";
+let selected = null; // null = viewing mode, nothing opened
 let sheetOpen = false;
 const tour = { on: false, playing: false, done: false, index: 0, elapsed: 0 };
 
@@ -330,7 +330,25 @@ function stepNav(step) {
   </nav>`;
 }
 
+function viewingDock() {
+  const missing = missingForBookkeeper(visibleJob(state));
+  const flag = missing.length && visibleJob(state).status === "active"
+    ? `<p class="missing">The bookkeeper is missing ${missing.join(" and ")}.</p>` : "";
+  dock.classList.toggle("open", sheetOpen);
+  dock.innerHTML = `<div class="dock-head">
+      <b class="num">&#9673;</b>
+      <div class="dock-title"><p class="eyebrow">Viewing</p><h2>The whole job</h2></div>
+      <button type="button" class="sheet-toggle" data-sheet aria-expanded="${sheetOpen}">${sheetOpen ? "Less" : "Details"}</button>
+    </div>
+    <div class="dock-body"><p class="lead">Tap any part of the job to open it. Double-tap to close it again.</p>${flag}
+      <nav class="step-nav" aria-label="Step by step"><span></span><button type="button" class="ghost strong" data-select="job">Start at 1: Job →</button></nav></div>`;
+}
+
 function renderDock() {
+  if (!selected) {
+    viewingDock();
+    return;
+  }
   const step = stepOf(selected);
   const job = visibleJob(state);
   const title =
@@ -405,7 +423,7 @@ function startTour() {
 function finishTour() {
   tour.done = true;
   tour.playing = false;
-  selected = "job";
+  selected = null;
   paint();
   if (scene) scene.overview();
 }
@@ -462,6 +480,18 @@ function select(id) {
   if (scene) scene.focus(id);
 }
 
+/** Back to viewing mode: nothing opened, whole site in view. Ends a walkthrough too. */
+const lastPick = { id: null, at: 0 };
+function deselect() {
+  selected = null;
+  tour.on = false;
+  tour.playing = false;
+  tour.done = false;
+  paint();
+  syncLayout();
+  if (scene) scene.overview();
+}
+
 // ---------- layout numbers the 3D view needs ----------
 function insets() {
   const r = stage.getBoundingClientRect();
@@ -497,6 +527,7 @@ try {
     steps: WORKFLOW,
     insets,
     onSelect: (id) => select(id),
+    onDoubleTap: deselect,
     onUserCamera: pauseTour,
     onFrame(list, dt) {
       placeTags(list);
@@ -518,13 +549,20 @@ try {
 document.addEventListener("click", (event) => {
   const pick = event.target.closest("[data-select]");
   if (pick) {
-    select(pick.dataset.select);
+    const id = pick.dataset.select;
+    const now = performance.now();
+    if (lastPick.id === id && now - lastPick.at < 400 && selected === id) {
+      lastPick.id = null;
+      deselect();
+      return;
+    }
+    lastPick.id = id;
+    lastPick.at = now;
+    select(id);
     return;
   }
   if (event.target.closest("[data-overview]")) {
-    selected = "job";
-    paint();
-    if (scene) scene.overview();
+    deselect();
     return;
   }
   if (event.target.closest("[data-sheet]")) {
@@ -567,7 +605,7 @@ $("#reset").addEventListener("click", () => {
     /* nothing saved to clear */
   }
   state = seed();
-  selected = "job";
+  selected = null;
   tour.on = false;
   tour.playing = false;
   tour.done = false;
@@ -592,10 +630,7 @@ $("#tourPrev").addEventListener("click", () => goStep(tour.done ? WORKFLOW.lengt
 $("#tourStop").addEventListener("click", stopTour);
 $("#zoomIn").addEventListener("click", () => scene && scene.zoom(0.75));
 $("#zoomOut").addEventListener("click", () => scene && scene.zoom(1.35));
-$("#zoomAll").addEventListener("click", () => {
-  pauseTour();
-  if (scene) scene.overview();
-});
+$("#zoomAll").addEventListener("click", deselect);
 
 document.addEventListener("keydown", (event) => {
   if (event.target.closest && event.target.closest("input, textarea, select")) return;
@@ -605,8 +640,8 @@ document.addEventListener("keydown", (event) => {
   else if (event.key === "ArrowLeft" && i > 0) select(WORKFLOW[i - 1].id);
   else if ((event.key === "+" || event.key === "=") && scene) scene.zoom(0.8);
   else if ((event.key === "-" || event.key === "_") && scene) scene.zoom(1.25);
-  else if (event.key === "0" && scene) scene.overview();
-  else if (event.key === "Escape" && tour.on) stopTour();
+  else if (event.key === "0") deselect();
+  else if (event.key === "Escape") deselect();
   else return;
   event.preventDefault();
 });

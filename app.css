@@ -281,3 +281,7 @@ button[data-delete].quiet-action { min-height: 48px; color: var(--warn); border-
 @media (prefers-reduced-motion: reduce) {
   .tag, .step { transition: none; }
 }
+
+/* no browser double-tap zoom on controls: double-tap closes things here */
+button, .tag, #sky { touch-action: manipulation; }
+#sky { touch-action: none; }
